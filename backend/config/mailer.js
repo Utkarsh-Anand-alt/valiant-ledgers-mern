@@ -14,14 +14,28 @@ function buildTransporter() {
     return null;
   }
 
+  const isGmail = SMTP_HOST.includes('gmail');
+
+  const baseConfig = isGmail
+    ? {
+        // Nodemailer's built-in "service" shorthand resolves the correct
+        // host/port/TLS settings for Gmail internally — more reliable on
+        // cloud hosts (Render, Railway, etc.) than a manual host/port config.
+        service: 'gmail',
+        auth: { user: SMTP_USER, pass: SMTP_PASS },
+      }
+    : {
+        host: SMTP_HOST,
+        port: Number(SMTP_PORT) || 465,
+        secure: String(SMTP_SECURE) === 'true',
+        auth: { user: SMTP_USER, pass: SMTP_PASS },
+      };
+
   return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT) || 465,
-    secure: String(SMTP_SECURE) === 'true',
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },    connectionTimeout: 10000,
+    ...baseConfig,
+    // Fail fast instead of hanging for minutes if the host/port is blocked
+    // or misconfigured on the hosting platform.
+    connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 10000,
   });
